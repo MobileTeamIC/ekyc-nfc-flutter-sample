@@ -367,10 +367,18 @@ final config = EkycPresets.ocr(
 );
 ```
 
+
 2. **Bắt đầu Luồng eKYC**:
 ```dart
 final ekycService = EkycMethodChannel();
 final result = await ekycService.startOcr(config);
+```
+3. **Thiet lap .env**
+  - Tao file assets/config/.env
+```
+  ID_NUMBER=<idNumber>
+  BIRTHDAY=<yyMMdd>
+  EXPIRE=<yyMMdd>
 ```
 
 ### Các Preset Có Sẵn
