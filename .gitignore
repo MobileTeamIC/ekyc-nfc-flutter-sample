@@ -48,3 +48,6 @@ app.*.map.json
 /android/ekyc/build
 /android/nfc/build
 /android/scanqr/build
+
+# FVM Version Cache
+.fvm/

@@ -1,2 +1,2 @@
 configurations.maybeCreate("default")
-artifacts.add("default", file('vnpt_nfc_sdk-release-v1.7.5.aar'))
+artifacts.add("default", file('vnpt_nfc_sdk-release-v1.7.8.aar'))
