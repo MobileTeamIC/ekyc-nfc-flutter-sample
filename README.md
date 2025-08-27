@@ -1,38 +1,442 @@
-# Hướng dẫn sử dụng phiên bản android
-Dự án mẫu thực hiện việc tích hợp SDK Đọc thông tin thẻ chip bằng công nghệ NFC cho ứng dụng di động (Android)
-## Hướng dẫn cài đặt
-## Quan trọng: - Liên hệ với chúng tôi qua trang web: [https://ekyc.vnpt.vn/vi]() hoặc email **vnptai@vnpt.vn** để có thể lấy được các token và sdk, nếu không ứng dụng sẽ không chạy được
+# eKYC NFC Flutter Sample
 
-### Bước 1: Cài đặt Android Studio
-- Tải Android Studio tại [đây](https://developer.android.com/studio)
-- Cài đặt Android Studio theo hướng dẫn trên trang web
-### Bước 2: Tải mã nguồn
-- Tải mã nguồn dự án về máy tính của bạn bằng cách sử dụng lệnh sau trong terminal:
-```bash
-git clone ...
+**Lưu ý**: Ứng dụng này sử dụng FVM version 3.29.2
+
+## Cài đặt & Tích hợp SDK
+
+### Yêu cầu trước khi bắt đầu
+- **Quan trọng**: Liên hệ với chúng tôi qua [https://ekyc.vnpt.vn/vi](https://ekyc.vnpt.vn/vi) hoặc email **vnptai@vnpt.vn** để lấy các token và SDK cần thiết. Ứng dụng sẽ không hoạt động nếu không có những thứ này.
+
+### Tích hợp SDK iOS
+
+#### Bước 1: Tạo thư mục Fws
+1. Điều hướng đến thư mục dự án iOS: `ios/Runner/`
+2. Tạo một thư mục mới tên `Fws` (nếu chưa có)
+3. Thư mục này sẽ chứa tất cả các framework SDK iOS
+
+#### Bước 2: Thêm SDK Frameworks
+1. **Kéo thả** các framework SDK sau vào thư mục `Fws`:
+   - `ICNFCCardReader.xcframework` - SDK đọc thẻ NFC
+   - `ICSdkEKYC.xcframework` - SDK eKYC
+   - `OpenSSL.xcframework` - Thư viện OpenSSL (nếu được cung cấp)
+
+#### Bước 3: Cấu hình Dự án Xcode
+1. Mở dự án trong Xcode: `ios/Runner.xcworkspace`
+2. Chọn dự án trong navigator
+3. Chọn target **Runner**
+4. Vào tab **General** → **Frameworks, Libraries, and Embedded Content**
+5. Nhấn nút **+** và thêm các framework từ thư mục `Fws`
+6. Đặt **Embed** thành **"Embed & Sign"** cho mỗi framework
+
+#### Bước 4: Cập nhật Podfile (nếu sử dụng CocoaPods)
+```ruby
+# ios/Podfile
+platform :ios, '13.0'
+
+target 'Runner' do
+  use_frameworks!
+  use_modular_headers!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  
+  # Thêm local frameworks
+  pod 'ICNFCCardReader', :path => 'Runner/Fws/ICNFCCardReader.xcframework'
+  pod 'ICSdkEKYC', :path => 'Runner/Fws/ICSdkEKYC.xcframework'
+end
 ```
-### Bước 3: Mở dự án trong Android Studio
-- Mở Android Studio và chọn "Open an existing Android Studio project"
-- Chọn thư mục chứa mã nguồn dự án mà bạn đã tải về
-- Nếu cần thiết, mở riêng thư mục android trong android studio thay vì mở cả ứng dụng flutter để tiện cho việc cài đặt
-- Chờ Android Studio tải các phụ thuộc và cấu hình dự án
-- Nếu bạn gặp lỗi về phiên bản Gradle, hãy kiểm tra tệp `gradle-wrapper.properties` trong thư mục `gradle/wrapper` và đảm bảo rằng phiên bản Gradle tương thích với phiên bản Android Studio của bạn
-- Thêm sdk vào thư mục tương ứng
-- **Lưu ý**: Sử dụng Java 11/17 để build dự án
 
-### Bước 4: Cấu hình thiết bị
-- Kết nối thiết bị Android của bạn với máy tính qua cáp USB
-- Bật chế độ "USB Debugging" trên thiết bị Android của bạn
-- Mở Android Studio và chọn thiết bị của bạn từ danh sách thiết bị ảo hoặc thiết bị thật
-- Nếu bạn chưa cài đặt trình điều khiển USB cho thiết bị của mình, hãy làm theo hướng dẫn trên trang web của nhà sản xuất thiết bị để cài đặt trình điều khiển
+#### Bước 5: Build và Test
+1. Chạy `cd ios && pod install` (nếu sử dụng CocoaPods)
+2. Clean và rebuild: `flutter clean && flutter pub get`
+3. Test tích hợp: `flutter run`
 
-### Bước 5 (quan trọng): Cấu hình ứng dụng
-- Khách hàng sẽ đăng nhập bằng tài khoản trên landing page
-- Truy cập vào mục "Quản lý Token ở cột bên trái" và lấy các token cần thiết, để ý hộp thoại nhỏ ở góc trên bên phải màn hình để chọn đúng dịch vụ mình sử dụng
-- Thay token vào các giá trị tương ứng trong class MainActivity
-- **Chú ý**: AccessToken sẽ sử dụng API để refresh định kì
+### Tích hợp SDK Android
 
-### Bước 6: Chạy ứng dụng
-- Nhấn nút "Run" (hình tam giác màu xanh) trong Android Studio để biên dịch và chạy ứng dụng trên thiết bị của bạn
-- Chờ cho ứng dụng được cài đặt và khởi động trên thiết bị
-- Khi ứng dụng đã chạy, bạn có thể thử nghiệm các tính năng của nó bằng cách sử dụng NFC trên thiết bị của bạn
+#### Bước 1: Thêm file AAR SDK
+1. Điều hướng đến thư mục dự án Android: `android/`
+2. Tạo các thư mục sau nếu chưa có:
+   ```
+   android/
+   ├── ekyc/
+   ├── nfc/
+   └── scanqr/
+   ```
+
+#### Bước 2: Đặt file SDK
+1. **eKYC SDK**: Đặt file AAR eKYC vào `android/ekyc/`
+2. **NFC SDK**: Đặt file AAR NFC vào `android/nfc/`
+3. **ScanQR SDK**: Đặt file AAR ScanQR vào `android/scanqr/`
+
+#### Bước 3: Cấu hình file build.gradle
+
+**Root build.gradle** (`android/build.gradle`):
+```gradle
+buildscript {
+    ext.kotlin_version = '1.8.22'
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.buildDir = '../build'
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+subprojects {
+    project.evaluationDependsOn(':app')
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}
+
+```
+
+**App build.gradle** (`android/app/build.gradle`):
+```gradle
+android {
+    compileSdkVersion 35
+    
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+
+dependencies {
+    implementation project(':ekyc')
+    implementation project(':scanqr')
+    implementation project(':nfc')
+    implementation 'androidx.multidex:multidex:2.0.0'
+    implementation 'androidx.exifinterface:exifinterface:1.0.0'
+    implementation 'com.google.code.gson:gson:2.8.2'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.0'
+    implementation 'com.airbnb.android:lottie:6.0.1'
+    implementation 'androidx.core:core-ktx:1.8.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.1'
+
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.9.0'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+
+    // NFC
+    implementation 'org.jmrtd:jmrtd:0.7.24'
+    implementation 'com.madgag.spongycastle:prov:1.58.0.0'
+    implementation 'net.sf.scuba:scuba-sc-android:0.0.23'
+    implementation group: 'org.ejbca.cvc', name: 'cert-cvc', version: '1.4.6'
+    implementation 'org.bouncycastle:bcpkix-jdk15on:1.67'
+
+    implementation 'commons-io:commons-io:2.6'
+//    implementation 'com.github.mhshams:jnbis:2.0.2'
+    implementation 'com.airbnb.android:lottie:6.0.1'
+    implementation "androidx.lifecycle:lifecycle-extensions:2.0.0"
+    implementation "android.arch.lifecycle:extensions:1.1.1"
+
+    implementation "com.google.zxing:core:3.5.1"
+    implementation "androidx.camera:camera-core:1.2.1"
+    implementation "androidx.camera:camera-camera2:1.2.1"
+    implementation "androidx.camera:camera-lifecycle:1.2.1"
+    implementation "androidx.camera:camera-view:1.2.1"
+    implementation "com.squareup.okhttp3:okhttp:4.11.0"
+    implementation 'com.google.code.gson:gson:2.10.1'
+}
+
+```
+
+#### Bước 4: Cập nhật AndroidManifest.xml
+Thêm các quyền cần thiết trong `android/app/src/main/AndroidManifest.xml`:
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+   <!-- Quyền NFC -->
+   <uses-permission android:name="android.permission.NFC" />
+   <uses-feature android:name="android.hardware.nfc" android:required="true" />
+   
+   <!-- Quyền Camera -->
+   <uses-permission android:name="android.permission.CAMERA" />
+   <uses-feature
+      android:name="android.hardware.camera"
+      android:required="false" />
+   
+   <!-- Quyền Internet -->
+   <uses-permission android:name="android.permission.INTERNET" />
+   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+   
+   <!-- Quyền Storage -->
+   <uses-permission
+      android:name="android.permission.READ_EXTERNAL_STORAGE"
+      android:maxSdkVersion="32" />
+
+   <application
+        android:label="sampleintegrateekyc"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+</manifest>
+```
+
+#### Bước 5: Cấu hình ProGuard (Tùy chọn)
+Nếu bạn sử dụng ProGuard, thêm rules trong `android/app/proguard-rules.pro`:
+```proguard
+# Giữ lại các class SDK
+-keep class com.vnptit.** { *; }
+-keep class com.vnpt.** { *; }
+-dontwarn com.vnptit.**
+-dontwarn com.vnpt.**
+
+# Giữ lại các method native
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+```
+
+#### Bước 6: Build và Test
+1. Clean dự án: `flutter clean`
+2. Lấy dependencies: `flutter pub get`
+3. Test tích hợp: `flutter run`
+
+## Hướng dẫn Tích hợp Flutter
+
+### Thiết lập Method Channel
+
+Dự án sử dụng một method channel duy nhất cho tất cả các thao tác eKYC và NFC:
+
+```dart
+static const MethodChannel _channel = MethodChannel('flutter.sdk.ekyc/integrate');
+```
+
+### Các Method Có Sẵn
+
+#### Methods eKYC
+- `startEkycOcr` - Quét và trích xuất văn bản từ tài liệu
+- `startEkycFace` - Xác thực khuôn mặt
+- `startEkycFull` - Luồng eKYC hoàn chỉnh
+- `startEkycScanQr` - Quét mã QR
+
+#### Methods NFC
+- `startNfcQrCode` - Đọc mã QR NFC
+- `startNfcNoQr` - Đọc NFC với đầu vào thủ công
+
+### Tham số Cấu hình
+
+Tất cả các method đều nhận một object cấu hình với các tham số sau:
+
+```dart
+{
+  // Tokens eKYC
+  "accessTokenEKYC": "your_ekyc_access_token",
+  "tokenIdEKYC": "your_ekyc_token_id", 
+  "tokenKeyEKYC": "your_ekyc_token_key",
+  
+  // Tokens NFC
+  "accessToken": "your_nfc_access_token",
+  "tokenId": "your_nfc_token_id",
+  "tokenKey": "your_nfc_token_key",
+  
+  // Đầu vào thủ công (cho NFC)
+  "idNumber": "<idNumber>",
+  "birthday": "<yyMMdd>",
+  "expiredDate": "yyMMdd",
+  
+  // Cấu hình UI
+  "languageSdk": "icekyc_vi",
+  "isShowTutorial": true,
+  "isEnableGotIt": true
+}
+```
+
+### Định dạng Phản hồi
+
+Tất cả các method trả về một chuỗi JSON với cấu trúc sau:
+
+```json
+{
+  "OCR_RESULT": "ocr_result_data",
+  "LIVENESS_CARD_FRONT_RESULT": "liveness_front_data",
+  "LIVENESS_CARD_BACK_RESULT": "liveness_back_data",
+  "COMPARE_FACE_RESULT": "face_compare_data",
+  "LIVENESS_FACE_RESULT": "liveness_face_data",
+  "MASKED_FACE_RESULT": "masked_face_data",
+  "QR_CODE_RESULT_NFC": "qr_code_data",
+  "IMAGE_AVATAR_CARD_NFC": "avatar_image_path",
+  "HASH_AVATAR": "avatar_hash",
+  "CLIENT_SESSION_RESULT": "client_session",
+  "LOG_NFC": "nfc_log_data",
+  "POST_CODE_ORIGINAL_LOCATION_RESULT": "original_location",
+  "POST_CODE_RECENT_LOCATION_RESULT": "recent_location"
+}
+```
+
+### Xử lý Lỗi
+
+SDK cung cấp xử lý lỗi toàn diện:
+
+```dart
+try {
+  final result = await _channel.invokeMethod('startEkycOcr', config);
+  // Xử lý thành công
+} on PlatformException catch (e) {
+  // Xử lý lỗi đặc thù platform
+  print('Error: ${e.code} - ${e.message}');
+} catch (e) {
+  // Xử lý lỗi chung
+  print('General error: $e');
+}
+```
+
+## Tính năng
+
+### Luồng eKYC
+- **OCR Flow**: Quét và trích xuất văn bản từ tài liệu
+- **Face Verification**: Chụp và xác thực khuôn mặt
+- **Full eKYC**: Luồng OCR + Xác thực khuôn mặt hoàn chỉnh
+- **QR Code Scanning**: Chức năng quét mã QR
+
+### Luồng NFC
+- **NFC QR Code**: Quét mã QR sau đó đọc chip NFC
+- **NFC Manual**: Nhập thông tin thẻ thủ công để đọc NFC
+
+## Kiến trúc
+
+### Service Layer
+- **EkycConfig**: Lớp cấu hình chứa tất cả các tham số SDK
+- **EkycPresets**: Cấu hình định sẵn cho các trường hợp sử dụng phổ biến
+- **EkycMethodChannel**: Dịch vụ method channel sạch sẽ cho giao tiếp native
+
+### Quản lý Cấu hình
+Dự án sử dụng cách tiếp cận cấu hình tập trung:
+- Tất cả các tham số SDK được quản lý thông qua `EkycConfig`
+- Cấu hình phổ biến có sẵn thông qua `EkycPresets`
+- Dễ dàng mở rộng và sửa đổi cho các trường hợp sử dụng khác nhau
+
+### Tích hợp Native
+- **Android**: Triển khai Kotlin sạch sẽ với xử lý lỗi phù hợp
+- **iOS**: Triển khai Swift có cấu trúc với delegate patterns
+- Interface method channel nhất quán trên các platform
+
+## Sử dụng
+
+### Thiết lập Cơ bản
+
+1. **Cấu hình Tham số SDK**:
+```dart
+final config = EkycPresets.ocr(
+  languageSdk: 'icekyc_vi',
+  isShowTutorial: true,
+  isEnableGotIt: true,
+);
+```
+
+2. **Bắt đầu Luồng eKYC**:
+```dart
+final ekycService = EkycMethodChannel();
+final result = await ekycService.startOcr(config);
+```
+
+### Các Preset Có Sẵn
+
+#### Luồng eKYC
+```dart
+// OCR Flow
+EkycPresets.ocr()
+
+// Face Verification
+EkycPresets.face()
+
+// Full eKYC
+EkycPresets.full()
+
+// QR Code Scanning
+EkycPresets.scanQr()
+```
+
+#### Luồng NFC
+```dart
+// NFC QR Code
+EkycPresets.nfcQrCode()
+
+// NFC Manual Input
+EkycPresets.nfcManual(
+  idNumber: '030201008790',
+  birthday: '010211',
+  expiredDate: '260211',
+)
+```
+
+## Tham số Cấu hình
+
+### Tham số eKYC
+- `accessTokenEKYC`: Access token dịch vụ eKYC
+- `tokenIdEKYC`: Token ID dịch vụ eKYC
+- `tokenKeyEKYC`: Token key dịch vụ eKYC
+- `languageSdk`: Ngôn ngữ SDK ('icekyc_vi' | 'icekyc_en')
+- `isShowTutorial`: Hiển thị màn hình hướng dẫn
+- `isEnableGotIt`: Bật nút "Đã hiểu"
+- `flowType`: Loại luồng eKYC
+- `documentType`: Loại tài liệu cho OCR
+
+### Tham số NFC
+- `accessToken`: Access token dịch vụ NFC
+- `tokenId`: Token ID dịch vụ NFC
+- `tokenKey`: Token key dịch vụ NFC
+- `idNumber`: Số thẻ 12 chữ số
+- `birthday`: Ngày sinh (định dạng YYMMDD)
+- `expiredDate`: Ngày hết hạn (định dạng YYMMDD)
+
+## Xử lý Lỗi
+
+Dự án bao gồm xử lý lỗi toàn diện:
+- Xử lý exception platform trong method channel
+- Xác thực đầu vào cho luồng NFC thủ công
+- Thông báo lỗi thân thiện với người dùng
+- Fallback nhẹ nhàng cho các tính năng không được hỗ trợ
+
+### Hỗ trợ
+
+Để được hỗ trợ kỹ thuật hoặc truy cập SDK, liên hệ:
+- Website: [https://ekyc.vnpt.vn/vi](https://ekyc.vnpt.vn/vi)
+- Email: **vnptai@vnpt.vn**
+
+## Giấy phép
+
+Dự án này được cung cấp như một mẫu để tích hợp SDK eKYC và NFC của VNPT. 
