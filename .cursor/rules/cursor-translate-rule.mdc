@@ -1,0 +1,121 @@
+---
+description: 
+globs: 
+alwaysApply: false
+# Flutter Localization Automation Rule
+
+## Rule Name: flutter-localization-optimizer
+**Version:** 2.0  
+**Description:** Automatically detect hardcoded texts in Flutter files, generate ARB translations, and update Dart code to use localization keys.
+
+## Workflow Process:
+
+### 1. Text Detection Phase
+- **Auto-scan** specified directories/files for hardcoded strings
+- **Filter criteria:**
+  - Text inside `Text()`, `AppBar(title:)`, `showDialog()`, `showSnackBar()`
+  - String literals in UI components (exclude variables, URLs, keys)
+  - Ignore: `S.of(context).`, `S.current.`, technical strings, regex patterns
+- **Generate snake_case keys** from detected text content
+- **Preserve placeholders** like `{name}`, `%s`, `\n`, etc.
+
+### 2. ARB Generation Phase
+- **Batch update all language files** simultaneously:
+  - `lib/l10n/intl_en.arb` (English - source)
+  - `lib/l10n/intl_de.arb` (German)
+  - `lib/l10n/intl_fr.arb` (French) 
+  - `lib/l10n/intl_hi.arb` (Hindi)
+  - `lib/l10n/intl_id.arb` (Indonesian)
+  - `lib/l10n/intl_vi.arb` (Vietnamese)
+  - `lib/l10n/intl_zh.arb` (Chinese)
+- **Append new keys** to existing ARB files (don't overwrite)
+- **Auto-translate** using context-aware translations for each language
+
+### 3. Dart Code Update Phase
+- **Replace hardcoded strings** with `S.of(context).key_name`
+- **Add missing imports:** `import '../../../../l10n/generated/l10n.dart';`
+- **Handle context availability:**
+  - Use `S.of(context).key` when BuildContext available
+  - Use `S.current.key` for static/global contexts
+- **Batch process** all files in single operation
+
+### 4. Key Naming Convention
+```
+Original: "Tạo ngân sách mặc định" 
+Key: "createDefaultBudgetTitle"
+
+Original: "• Set budget 70-80% of income\n• Save 20%"
+Key: "budgetAdviceDescription"
+```
+
+### 5. File Structure Optimization
+- **Parallel processing:** Update all ARB files simultaneously
+- **Import management:** Auto-add required imports to Dart files
+- **Context detection:** Smart detection of BuildContext availability
+- **Validation:** Ensure all keys exist before replacing strings
+
+## Usage Commands:
+
+### Quick Localization (Single Directory)
+```
+@flutter-localize /path/to/directory
+```
+
+### Full App Localization  
+```
+@flutter-localize-app
+```
+
+### Specific File Processing
+```
+@flutter-localize-file /path/to/file.dart
+```
+
+## Advanced Features:
+
+### Smart Context Detection
+- Automatically determine when to use `S.of(context)` vs `S.current`
+- Handle StatelessWidget, StatefulWidget, and static contexts
+
+### Batch Operations
+- Process multiple files/directories in single command
+- Update all 7 language files simultaneously
+- Generate and apply all changes in one workflow
+
+### Error Prevention
+- Validate ARB syntax before saving
+- Check for duplicate keys
+- Ensure imports are correctly added
+- Verify context availability for S.of(context) usage
+
+### Output Summary
+After completion, provide:
+- Number of strings localized
+- Files modified count
+- New keys added count
+- Any warnings or conflicts
+
+## Example Workflow:
+```
+Input: Require context and file context from user
+
+Output:
+✅ Scanned 8 files
+✅ Found 25 hardcoded strings  
+✅ Generated 25 new ARB keys
+✅ Updated 7 language files
+✅ Modified 8 Dart files
+✅ Added imports to 6 files
+⚠️  2 context warnings resolved
+
+Summary: 25 strings localized across 7 languages
+```
+
+## Integration Notes:
+- **Pre-commit hook compatible**
+- **CI/CD pipeline ready** 
+- **Supports incremental updates**
+- **Preserves existing translations**
+- **Maintains code formatting**
+
+This rule eliminates manual work and reduces localization time from hours to minutes while ensuring consistency across all language files and proper Flutter localization patterns. 

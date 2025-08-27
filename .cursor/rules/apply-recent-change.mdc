@@ -1,0 +1,105 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+{
+  "rule_name": "Apply recent changes to similar components and screens in the app",
+  "description": "This rule ensures that recent changes made to a Flutter component or screen are systematically applied to other similar components or screens across the app. The implementation follows clean code principles, creates maintainable micro UI components, and adheres to Material Design 3 for a polished UI/UX, as expected from a top-tier mobile developer.",
+  "steps": [
+    {
+      "step": "Identify the changed component or screen",
+      "action": "Locate the recently modified Flutter widget (e.g., a button, card, or screen) in the codebase. Note the specific changes made, such as styling, functionality, or structure."
+    },
+    {
+      "step": "Determine similar components or screens",
+      "action": "Search the codebase for components or screens with similar roles or structures. Use naming conventions, widget types, or shared base classes to identify them (e.g., all buttons extending a `CustomButton` or screens using a shared layout). Tools like Dart's `find` or IDE search can assist."
+    },
+    {
+      "step": "Extract reusable micro UI components",
+      "action": "If the changes involve reusable UI elements, refactor them into micro components. For example, extract a styled button into a `PrimaryButton` widget with customizable parameters (e.g., `text`, `onPressed`, `isLoading`). Ensure each micro component is stateless or stateful as needed, with clear documentation."
+    },
+    {
+      "step": "Apply changes consistently",
+      "action": "Update all identified components or screens to reflect the recent changes. For example, if a button's style was updated to use Material Design 3's `ElevatedButton` with specific padding and typography, apply the same style to all similar buttons. Use constants or theme data for consistency (e.g., `Theme.of(context).elevatedButtonTheme`)."
+    },
+    {
+      "step": "Adhere to Material Design 3",
+      "action": "Ensure all UI updates follow Material Design 3 guidelines. Use `MaterialApp` with a `ThemeData` configured for Material 3 (`useMaterial3: true`). Apply appropriate color schemes (e.g., `ColorScheme.fromSeed`), typography, and components like `FilledButton`, `Card`, or `NavigationBar`. Verify accessibility (e.g., sufficient contrast, tap target sizes)."
+    },
+    {
+      "step": "Ensure clean code practices",
+      "action": "Write concise, readable code. Use meaningful variable names, follow Dart style guidelines, and organize code into small, single-responsibility widgets. Leverage `const` constructors for performance. Run `dart format` to enforce consistent formatting."
+    },
+    {
+      "step": "Test UI/UX consistency",
+      "action": "Test the updated components and screens on multiple devices (iOS, Android, different screen sizes) using Flutter's `flutter run` or emulators. Verify that the UI/UX is polished, with smooth animations, responsive layouts, and no visual glitches. Use `flutter test` for widget tests if applicable."
+    },
+    {
+      "step": "Document and review",
+      "action": "Add comments or documentation to explain the purpose of the micro components and any shared logic. Use `dartdoc` for API documentation. Perform a code review to ensure maintainability and adherence to the rule's standards."
+    }
+  ],
+  "example": {
+    "scenario": "A developer updates a button's style in one screen to use Material Design 3's `FilledButton` with a custom color and rounded corners.",
+    "implementation": [
+      "Create a `PrimaryButton` widget in `lib/widgets/primary_button.dart`:",
+      "```dart",
+      "import 'package:flutter/material.dart';",
+      "",
+      "class PrimaryButton extends StatelessWidget {",
+      "  final String text;",
+      "  final VoidCallback? onPressed;",
+      "  final bool isLoading;",
+      "",
+      "  const PrimaryButton({",
+      "    super.key,",
+      "    required this.text,",
+      "    this.onPressed,",
+      "    this.isLoading = false,",
+      "  });",
+      "",
+      "  @override",
+      "  Widget build(BuildContext context) {",
+      "    return FilledButton(",
+      "      onPressed: isLoading ? null : onPressed,",
+      "      style: FilledButton.styleFrom(",
+      "        shape: RoundedRectangleBorder(",
+      "          borderRadius: BorderRadius.circular(12),",
+      "        ),",
+      "        padding: const EdgeInsets.symmetric(",
+      "          vertical: 16,",
+      "          horizontal: 24,",
+      "        ),",
+      "      ),",
+      "      child: isLoading",
+      "          ? const CircularProgressIndicator()",
+      "          : Text(",
+      "              text,",
+      "              style: Theme.of(context).textTheme.labelLarge,",
+      "            ),",
+      "    );",
+      "  }",
+      "}",
+      "```",
+      "Replace all similar buttons across the app with `PrimaryButton`, ensuring consistent styling.",
+      "Update the app's theme in `lib/main.dart` to use Material Design 3:",
+      "```dart",
+      "MaterialApp(",
+      "  theme: ThemeData(",
+      "    useMaterial3: true,",
+      "    colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),",
+      "  ),",
+      "  home: const HomeScreen(),",
+      ")",
+      "```",
+      "Test the updated buttons on different devices to ensure consistent UI/UX."
+    ]
+  },
+  "notes": [
+    "Use Flutter's `ThemeData` to centralize styles and avoid hardcoding values.",
+    "Leverage `flutter_lints` for code quality checks.",
+    "Consider using a state management solution (e.g., Riverpod, Bloc) for complex screens to keep code maintainable.",
+    "Always prioritize accessibility (e.g., `Semantics` widget, screen reader support)."
+  ]
+}
