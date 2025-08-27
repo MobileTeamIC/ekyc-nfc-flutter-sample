@@ -47,6 +47,8 @@ class MainActivity : FlutterActivity(), MethodChannel.MethodCallHandler {
       val intentPair = when (call.method) {
          "startEkycOcr" -> Pair(getIntentEkycOcr(json), EKYC_REQUEST_CODE)
          "startEkycFace" -> Pair(getIntentEkycFace(json), EKYC_REQUEST_CODE)
+         "startEkycFull" -> Pair(getIntentEkycFull(json), EKYC_REQUEST_CODE)
+         "startEkycScanQr" -> Pair(getIntentEkycScanQr(json), EKYC_REQUEST_CODE)
          "startNfcQrCode" -> {
             if (isDeviceSupportedNfc()) {
                Pair(startNfcQrCode(json), NFC_REQUEST_CODE)
@@ -60,8 +62,8 @@ class MainActivity : FlutterActivity(), MethodChannel.MethodCallHandler {
                 Pair(startNfcNoQr(json), NFC_REQUEST_CODE)
              } else {
              result.error("NFC", "Device not supported NFC", null)
-             null
              }
+             null
          }
          else -> {
             result.notImplemented()
@@ -145,7 +147,6 @@ class MainActivity : FlutterActivity(), MethodChannel.MethodCallHandler {
       return intent
    }
 
-
    // Phương thức thực hiện eKYC luồng "Chụp ảnh giấy tờ"
    // Bước 1 - chụp ảnh giấy tờ
    // Bước 2 - hiển thị kết quả
@@ -179,6 +180,43 @@ class MainActivity : FlutterActivity(), MethodChannel.MethodCallHandler {
       return intent
    }
 
+   // Phương thức thực hiện eKYC luồng đầy đủ
+   private fun Activity.getIntentEkycFull(json: JSONObject): Intent {
+      val intent = getBaseIntent(VnptIdentityActivity::class.java, json)
+
+      // Giá trị này xác định kiểu giấy tờ để sử dụng:
+      intent.putExtra(
+         KeyIntentConstants.DOCUMENT_TYPE,
+         SDKEnum.DocumentTypeEnum.IDENTITY_CARD.value
+      )
+
+      // Bật/Tắt chức năng kiểm tra ảnh giấy tờ chụp trực tiếp (liveness card)
+      intent.putExtra(KeyIntentConstants.IS_CHECK_LIVENESS_CARD, true)
+
+      // Bật/[Tắt] chức năng So sánh ảnh trong thẻ và ảnh chân dung
+      intent.putExtra(KeyIntentConstants.IS_ENABLE_COMPARE, true)
+
+      // Bật/Tắt chức năng kiểm tra che mặt
+      intent.putExtra(KeyIntentConstants.IS_CHECK_MASKED_FACE, true)
+
+      // Lựa chọn chức năng kiểm tra ảnh chân dung chụp trực tiếp (liveness face)
+      intent.putExtra(
+         KeyIntentConstants.CHECK_LIVENESS_FACE,
+         SDKEnum.ModeCheckLiveNessFace.iBETA.value
+      )
+
+      return intent
+   }
+
+   // Phương thức thực hiện eKYC luồng quét QR
+   private fun Activity.getIntentEkycScanQr(json: JSONObject): Intent {
+      val intent = getBaseIntent(VnptIdentityActivity::class.java, json)
+
+      // Cấu hình cho quét QR
+      intent.putExtra(KeyIntentConstants.FLOW_TYPE, "scanQR")
+
+      return intent
+   }
 
    private fun <T : Activity> Activity.getBaseIntent(clazz: Class<T>, json: JSONObject): Intent {
       val intent = Intent(this, clazz)
@@ -186,237 +224,71 @@ class MainActivity : FlutterActivity(), MethodChannel.MethodCallHandler {
       // Nhập thông tin bộ mã truy cập. Lấy tại mục Quản lý Token https://ekyc.vnpt.vn/admin-dashboard/console/project-manager
       intent.putExtra(
          KeyIntentConstants.ACCESS_TOKEN,
-         if (json.has("access_token")) json.getString("access_token") else ""
+         if (json.has("accessToken")) json.getString("accessToken") else ""
       )
       intent.putExtra(
          KeyIntentConstants.TOKEN_ID,
-         if (json.has("token_id")) json.getString("token_id") else ""
+         if (json.has("tokenId")) json.getString("tokenId") else ""
       )
       intent.putExtra(
          KeyIntentConstants.TOKEN_KEY,
-         if (json.has("token_key")) json.getString("token_key") else ""
+         if (json.has("tokenKey")) json.getString("tokenKey") else ""
       )
 
       // Giá trị này dùng để đảm bảo mỗi yêu cầu (request) từ phía khách hàng sẽ không bị thay đổi.
-      intent.putExtra(KeyIntentConstants.CHALLENGE_CODE, "INNOVATIONCENTER")
+      // Mỗi lần gọi API sẽ tạo ra một giá trị mới
+      intent.putExtra(KeyIntentConstants.NONCE, System.currentTimeMillis().toString())
 
-      // Ngôn ngữ sử dụng trong SDK
-      // - VIETNAMESE: Tiếng Việt
-      // - ENGLISH: Tiếng Anh
-      intent.putExtra(KeyIntentConstants.LANGUAGE_SDK, SDKEnum.LanguageEnum.VIETNAMESE.value)
+      // Giá trị này dùng để xác định thời gian hết hạn của yêu cầu (request).
+      // Đơn vị tính bằng giây
+      intent.putExtra(KeyIntentConstants.TIMESTAMP, (System.currentTimeMillis() / 1000).toString())
 
-      // Bật/Tắt Hiển thị màn hình hướng dẫn
-      intent.putExtra(KeyIntentConstants.IS_SHOW_TUTORIAL, true)
+      return intent
+   }
 
-      // Bật chức năng hiển thị nút bấm "Bỏ qua hướng dẫn" tại các màn hình hướng dẫn bằng video
-      intent.putExtra(KeyIntentConstants.IS_ENABLE_GOT_IT, true)
+   private fun startNfcQrCode(json: JSONObject): Intent {
+      val intent = Intent(this, VnptScanNFCActivity::class.java)
 
-      // Sử dụng máy ảnh mặt trước
-      // - FRONT: Camera trước
-      // - BACK: Camera trước
-      intent.putExtra(
-         KeyIntentConstants.CAMERA_POSITION_FOR_PORTRAIT,
-         SDKEnum.CameraTypeEnum.FRONT.value
-      )
+      // Cấu hình NFC QR Code
+      intent.putExtra(KeyIntentConstantsNFC.ACCESS_TOKEN, if (json.has("accessToken")) json.getString("accessToken") else "")
+      intent.putExtra(KeyIntentConstantsNFC.TOKEN_ID, if (json.has("tokenId")) json.getString("tokenId") else "")
+      intent.putExtra(KeyIntentConstantsNFC.TOKEN_KEY, if (json.has("tokenKey")) json.getString("tokenKey") else "")
+      intent.putExtra(KeyIntentConstantsNFC.FLOW_TYPE, SDKEnumNFC.FlowTypeEnum.QR_CODE.value)
 
-      // Cho phép quét qr code
-      intent.putExtra(KeyIntentConstants.IS_ENABLE_SCAN_QRCODE, true)
+      return intent
+   }
+
+   private fun startNfcNoQr(json: JSONObject): Intent {
+      val intent = Intent(this, VnptScanNFCActivity::class.java)
+
+      // Cấu hình NFC Manual
+      intent.putExtra(KeyIntentConstantsNFC.ACCESS_TOKEN, if (json.has("accessToken")) json.getString("accessToken") else "")
+      intent.putExtra(KeyIntentConstantsNFC.TOKEN_ID, if (json.has("tokenId")) json.getString("tokenId") else "")
+      intent.putExtra(KeyIntentConstantsNFC.TOKEN_KEY, if (json.has("tokenKey")) json.getString("tokenKey") else "")
+      intent.putExtra(KeyIntentConstantsNFC.FLOW_TYPE, SDKEnumNFC.FlowTypeEnum.NFC_READER.value)
+      intent.putExtra(KeyIntentConstantsNFC.ID_NUMBER, if (json.has("idNumber")) json.getString("idNumber") else "")
+      intent.putExtra(KeyIntentConstantsNFC.BIRTHDAY, if (json.has("birthday")) json.getString("birthday") else "")
+      intent.putExtra(KeyIntentConstantsNFC.EXPIRED_DATE, if (json.has("expiredDate")) json.getString("expiredDate") else "")
 
       return intent
    }
 
    private fun isDeviceSupportedNfc(): Boolean {
-      val adapter = (getSystemService(NFC_SERVICE) as? NfcManager)?.defaultAdapter
-      return adapter != null && adapter.isEnabled
+      val nfcManager = getSystemService(NFC_SERVICE) as NfcManager
+      return nfcManager.defaultAdapter != null
    }
 
    private fun parseJsonFromArgs(call: MethodCall): JSONObject {
-      return try {
-         @Suppress("UNCHECKED_CAST")
-         (JSONObject(call.arguments as Map<String, Any>))
-      } catch (e: Exception) {
-         JSONObject(mapOf<String, Any>())
+      return JSONObject().apply {
+         call.arguments<Map<String, Any>>()?.forEach { (key, value) ->
+            put(key, value)
+         }
       }
    }
 
-   private fun Activity.startNfcQrCode(json: JSONObject): Intent {
-      return Intent(this, VnptScanNFCActivity::class.java).also {
-         /**
-          * Truyền access token chứa bearer
-          */
-         it.putExtra(KeyIntentConstantsNFC.ACCESS_TOKEN, json.getString("access_token"))
-         /**
-          * Truyền token id
-          */
-         it.putExtra(KeyIntentConstantsNFC.TOKEN_ID, json.getString("token_id"))
-         /**
-          * Truyền token key
-          */
-         it.putExtra(KeyIntentConstantsNFC.TOKEN_KEY, json.getString("token_key"))
-         /**
-          * Truyền access token chứa bearer của ekyc cho dịch vụ postcode
-          */
-         it.putExtra(KeyIntentConstantsNFC.ACCESS_TOKEN_EKYC, json.getString("access_token_ekyc"))
-         /**
-          * Truyền token id ekyc cho dịch vụ postcode
-          */
-         it.putExtra(KeyIntentConstantsNFC.TOKEN_ID_EKYC, json.getString("token_id_ekyc"))
-         /**
-          * Truyền token key ekyc cho dịch vụ postcode
-          */
-         it.putExtra(KeyIntentConstantsNFC.TOKEN_KEY_EKYC, json.getString("token_key_ekyc"))
-         /**
-          * điều chỉnh ngôn ngữ tiếng việt
-          *    - vi: tiếng việt
-          *    - en: tiếng anh
-          */
-         it.putExtra(KeyIntentConstantsNFC.LANGUAGE_SDK, SDKEnumNFC.LanguageEnum.VIETNAMESE.value)
-         /**
-          * hiển thị màn hình hướng dẫn + hiển thị nút bỏ qua hướng dẫn
-          * - mặc định luôn luôn hiển thị màn hình hướng dẫn
-          *    - true: hiển thị nút bỏ qua
-          *    - false: ko hiển thị nút bỏ qua
-          */
-         it.putExtra(KeyIntentConstantsNFC.IS_ENABLE_GOT_IT, true)
-         /**
-          * bật tính năng upload ảnh
-          *    - true: bật tính năng
-          *    - false: tắt tính năng
-          */
-         it.putExtra(KeyIntentConstantsNFC.IS_ENABLE_UPLOAD_IMAGE, true)
-         /**
-          * bật tính năng get Postcode
-          *    - true: bật tính năng
-          *    - false: tắt tính năng
-          */
-         it.putExtra(KeyIntentConstantsNFC.IS_ENABLE_POSTCODE_MATCHING, true)
-         /**
-          * bật tính năng xác thực chip
-          *    - true: bật tính năng
-          *    - false: tắt tính năng
-          */
-         it.putExtra(KeyIntentConstantsNFC.IS_ENABLE_CHECK_CHIP_CLONE, true)
-         /**
-          * truyền các giá trị đọc thẻ
-          *    - nếu không truyền gì mặc định sẽ đọc tất cả (MRZ,Verify Document,Image Avatar)
-          *    - giá trị truyền vào là 1 mảng int: nếu muốn đọc giá trị nào sẽ truyền
-          *      giá trị đó vào mảng
-          * eg: chỉ đọc thông tin MRZ
-          *    intArrayOf(SDKEnumNFC.ReadingNFCTags.MRZInfo.value)
-          */
-         it.putExtra(
-            KeyIntentConstantsNFC.READING_TAGS_NFC,
-            intArrayOf(
-               SDKEnumNFC.ReadingNFCTags.MRZInfo.value,
-               SDKEnumNFC.ReadingNFCTags.VerifyDocumentInfo.value,
-               SDKEnumNFC.ReadingNFCTags.ImageAvatarInfo.value
-            )
-         )
-//         /**
-//          * truyền giá trị bật quét QRCode
-//          *    - true: tắt quét QRCode
-//          *    - false: bật quét QRCode
-//          */
-//         it.putExtra(KeyIntentConstantsNFC.IS_TURN_OFF_QR_CODE, false)
-         // set baseDomain="" => sử dụng mặc định là Product
-         it.putExtra(KeyIntentConstantsNFC.BASE_URL, "")
-      }
-   }
-
-   private fun Activity.startNfcNoQr(json: JSONObject): Intent {
-      return Intent(this, VnptScanNFCActivity::class.java).also {
-         /**
-          * Truyền access token chứa bearer
-          */
-         it.putExtra(KeyIntentConstantsNFC.ACCESS_TOKEN, json.getString("access_token"))
-         /**
-          * Truyền token id
-          */
-         it.putExtra(KeyIntentConstantsNFC.TOKEN_ID, json.getString("token_id"))
-         /**
-          * Truyền token key
-          */
-         it.putExtra(KeyIntentConstantsNFC.TOKEN_KEY, json.getString("token_key"))
-         /**
-          * Truyền access token chứa bearer của ekyc cho dịch vụ postcode
-          */
-         it.putExtra(KeyIntentConstantsNFC.ACCESS_TOKEN_EKYC, json.getString("access_token_ekyc"))
-         /**
-          * Truyền token id ekyc cho dịch vụ postcode
-          */
-         it.putExtra(KeyIntentConstantsNFC.TOKEN_ID_EKYC, json.getString("token_id_ekyc"))
-         /**
-          * Truyền token key ekyc cho dịch vụ postcode
-          */
-         it.putExtra(KeyIntentConstantsNFC.TOKEN_KEY_EKYC, json.getString("token_key_ekyc"))
-         /**
-          * điều chỉnh ngôn ngữ tiếng việt
-          *    - vi: tiếng việt
-          *    - en: tiếng anh
-          */
-         it.putExtra(KeyIntentConstantsNFC.LANGUAGE_SDK, SDKEnumNFC.LanguageEnum.VIETNAMESE.value)
-         /**
-          * hiển thị màn hình hướng dẫn + hiển thị nút bỏ qua hướng dẫn
-          * - mặc định luôn luôn hiển thị màn hình hướng dẫn
-          *    - true: hiển thị nút bỏ qua
-          *    - false: ko hiển thị nút bỏ qua
-          */
-         it.putExtra(KeyIntentConstantsNFC.IS_ENABLE_GOT_IT, true)
-         /**
-          * bật tính năng upload ảnh
-          *    - true: bật tính năng
-          *    - false: tắt tính năng
-          */
-         it.putExtra(KeyIntentConstantsNFC.IS_ENABLE_UPLOAD_IMAGE, true)
-         /**
-          * bật tính năng get Postcode
-          *    - true: bật tính năng
-          *    - false: tắt tính năng
-          */
-         it.putExtra(KeyIntentConstantsNFC.IS_ENABLE_POSTCODE_MATCHING, true)
-         /**
-          * bật tính năng xác thực chip
-          *    - true: bật tính năng
-          *    - false: tắt tính năng
-          */
-         it.putExtra(KeyIntentConstantsNFC.IS_ENABLE_CHECK_CHIP_CLONE, true)
-         /**
-          * truyền các giá trị đọc thẻ
-          *    - nếu không truyền gì mặc định sẽ đọc tất cả (MRZ,Verify Document,Image Avatar)
-          *    - giá trị truyền vào là 1 mảng int: nếu muốn đọc giá trị nào sẽ truyền
-          *      giá trị đó vào mảng
-          * eg: chỉ đọc thông tin MRZ
-          *    intArrayOf(SDKEnumNFC.ReadingNFCTags.MRZInfo.value)
-          */
-         it.putExtra(
-            KeyIntentConstantsNFC.READING_TAGS_NFC,
-            intArrayOf(
-               SDKEnumNFC.ReadingNFCTags.MRZInfo.value,
-               SDKEnumNFC.ReadingNFCTags.VerifyDocumentInfo.value,
-               SDKEnumNFC.ReadingNFCTags.ImageAvatarInfo.value
-            )
-         )
-//         /**
-//          * truyền giá trị bật quét QRCode
-//          *    - true: tắt quét QRCode
-//          *    - false: bật quét QRCode
-//          */
-//         it.putExtra(KeyIntentConstantsNFC.IS_TURN_OFF_QR_CODE, true)
-         // set baseDomain="" => sử dụng mặc định là Product
-         it.putExtra(KeyIntentConstantsNFC.BASE_URL, "")
-         // truyền id định danh căn cước công dân
-         it.putExtra(KeyIntentConstantsNFC.ID_NUMBER_CARD, json.getString("card_id"))
-         // truyền ngày sinh ghi trên căn cước công dân
-         it.putExtra(KeyIntentConstantsNFC.BIRTHDAY_CARD, json.getString("card_dob"))
-         // truyền ngày hết hạn căn cước công dân
-         it.putExtra(KeyIntentConstantsNFC.EXPIRED_DATE_CARD, json.getString("card_expire_date"))
-      }
-   }
-
-   /**
-    * put value to [JSONObject] with null-safety
-    */
    private fun JSONObject.putSafe(key: String, value: String?) {
-      value?.let { put(key, JsonUtil.prettify(it)) }
+      if (!value.isNullOrEmpty()) {
+         put(key, value)
+      }
    }
 }
