@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import 'log_screen.dart';
 import 'services/ekyc_method_channel.dart';
@@ -18,7 +19,15 @@ class _EkycScreenState extends State<EkycScreen> {
   late TextEditingController _textIdController;
   late TextEditingController _textDobController;
   late TextEditingController _textExpireController;
-
+  final Map<String, String> features = {
+    'ocr': 'OCR giấy tờ',
+    'face': 'Kiểm tra khuôn mặt',
+    'full': 'eKYC đầy đủ',
+    'qr': 'Quét mã QR',
+    'nfcQrCode': 'Quét QR -> Đọc chip NFC',
+    'nfcManual': 'Nhập thông tin -> Đọc NFC',
+  };
+  String _selectedFeature = '';
   @override
   void initState() {
     _textIdController =
@@ -145,18 +154,9 @@ class _EkycScreenState extends State<EkycScreen> {
     }
   }
 
-  void _showError(String? message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message ?? 'Có lỗi xảy ra'),
-        backgroundColor: Theme.of(context).colorScheme.error,
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -177,74 +177,118 @@ class _EkycScreenState extends State<EkycScreen> {
             const SizedBox(height: 16),
             const Text('Số căn cước'),
             const SizedBox(height: 8),
-            TextField(
+            ShadInput(
               controller: _textIdController,
               keyboardType: TextInputType.number,
               maxLength: 12,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Nhập số ID',
-                counterText: "",
-              ),
+              placeholder: const Text('Nhập số ID'),
             ),
             const SizedBox(height: 16),
             const Text('Ngày sinh YYMMDD'),
             const SizedBox(height: 8),
-            TextField(
+            ShadInput(
               controller: _textDobController,
               keyboardType: TextInputType.number,
               maxLength: 6,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'yyMMdd, ví dụ: 950614',
-                counterText: "",
-              ),
+              placeholder: const Text('Nhập ngày sinh'),
             ),
             const SizedBox(height: 16),
             const Text('Ngày hết hạn YYMMDD'),
             const SizedBox(height: 8),
-            TextField(
+            ShadInput(
               controller: _textExpireController,
               keyboardType: TextInputType.number,
               maxLength: 6,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'yyMMdd, ví dụ: 950614',
-                counterText: "",
+              placeholder: const Text('Nhập ngày hết hạn'),
+            ),
+            const SizedBox(height: 16),
+            const Text('Chọn chức năng'),
+            ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 180),
+              child: ShadSelect<String>(
+                placeholder: const Text('Chọn chức năng'),
+                options: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(32, 6, 6, 6),
+                    child: Text(
+                      'Chọn chức năng',
+                      style: theme.textTheme.muted.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.popoverForeground,
+                      ),
+                      textAlign: TextAlign.start,
+                    ),
+                  ),
+                  ...features.entries.map(
+                      (e) => ShadOption(value: e.key, child: Text(e.value))),
+                ],
+                selectedOptionBuilder: (context, value) =>
+                    Text(features[value]!),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedFeature = value ?? '';
+                  });
+                },
               ),
             ),
             const Spacer(),
-            ElevatedButton(
-              onPressed: () async => _navigateToLog(await _startOcr()),
-              child: const Text('Thực hiện OCR giấy tờ'),
+            ShadButton(
+              onPressed: () async => _onSelectFeature(_selectedFeature),
+              child: const Text('Thực hiện eKYC'),
             ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () async => _navigateToLog(await _startFace()),
-              child: const Text('Thực hiện kiểm tra khuôn mặt'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () async => _navigateToLog(await _startFull()),
-              child: const Text('Thực hiện eKYC đầy đủ'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () async => _navigateToLog(await _startScanQr()),
-              child: const Text('Quét mã QR'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () async => _navigateToLog(await _startNfcQrCode()),
-              child: const Text('Quét QR -> Đọc chip NFC'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () async => _navigateToLog(await _startNfcManual()),
-              child: const Text('Nhập thông tin -> Đọc NFC'),
-            ),
+            const SizedBox(height: 16),
           ],
         ),
+      ),
+    );
+  }
+
+  void _onSelectFeature(String value) async {
+    if (value.isEmpty) {
+      _showError('Vui lòng chọn chức năng');
+      return;
+    }
+    switch (value) {
+      case 'ocr':
+        _navigateToLog(await _startOcr());
+        break;
+      case 'face':
+        _navigateToLog(await _startFace());
+        break;
+      case 'full':
+        _navigateToLog(await _startFull());
+        break;
+      case 'qr':
+        _navigateToLog(await _startScanQr());
+        break;
+      case 'nfcQrCode':
+        _navigateToLog(await _startNfcQrCode());
+        break;
+      case 'nfcManual':
+        _navigateToLog(await _startNfcManual());
+        break;
+      default:
+        _showError('Chức năng không hợp lệ');
+        break;
+    }
+  }
+
+  void _showError(String? message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message ?? 'Có lỗi xảy ra'),
+        backgroundColor: Theme.of(context).colorScheme.error,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showToast(String title, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 1),
+        backgroundColor: Theme.of(context).colorScheme.primary,
       ),
     );
   }
